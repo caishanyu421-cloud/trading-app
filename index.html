@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="短线策略" />
+  <meta name="theme-color" content="#3b82f6" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <title>AI短线宝 · 策略生成器</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --bg: #05050a;
+      --surface: #0c0c14;
+      --border: #1e1e2e;
+      --border-subtle: #0f0f1a;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #475569;
+      --text-faint: #334155;
+      --blue: #3b82f6;
+      --blue-dark: #2563eb;
+      --green: #22c55e;
+      --green-bright: #4ade80;
+      --yellow: #d97706;
+      --yellow-bright: #fbbf24;
+      --red: #dc2626;
+      --red-bright: #f87171;
+      --mono: 'JetBrains Mono', 'Courier New', monospace;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, 'PingFang SC', 'SF Pro Display', sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .safe-area {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 16px 80px;
+    }
+
+    /* Header */
+    .header {
+      padding: 20px 0 28px;
+    }
+    .header-eyebrow {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 8px;
+    }
+    .header-title {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .header-title span {
+      color: var(--blue);
+      font-weight: 400;
+      font-size: 22px;
+    }
+    .header-sub {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .card-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    /* Form */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      padding: 18px;
+    }
+    .form-field label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+    }
+    .form-field input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 11px 13px;
+      font-size: 16px;
+      font-family: var(--mono);
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .form-field input:focus { border-color: var(--blue); }
+    .form-field input::placeholder { color: #1e2433; }
+
+    /* Button */
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      margin-bottom: 24px;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-appearance: none;
+    }
+    .btn-primary:active { background: var(--blue-dark); transform: scale(0.98); }
+
+    /* Verdict */
+    .verdict-card {
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .verdict-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .verdict-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+    .verdict-sub {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 3px;
+      font-family: var(--mono);
+    }
+
+    /* Factor rows */
+    .factor-row {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .factor-row:last-child { border-bottom: none; }
+    .factor-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 3px;
+    }
+    .factor-value { font-size: 14px; color: #cbd5e1; font-weight: 500; }
+    .factor-note { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+    .factor-score {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+      padding-top: 16px;
+    }
+
+    /* Strategy rows */
+    .strat-row {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      gap: 12px;
+    }
+    .strat-row:last-child { border-bottom: none; }
+    .strat-key {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      width: 68px;
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+    .strat-val { font-size: 14px; color: var(--text); line-height: 1.5; }
+
+    /* Capital grid */
+    .cap-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      padding: 16px 18px;
+    }
+    .cap-label { font-family: var(--mono); font-size: 10px; color: var(--text-muted); margin-bottom: 5px; }
+    .cap-value { font-family: var(--mono); font-size: 17px; font-weight: 700; color: #94a3b8; }
+
+    /* Note footer */
+    .strat-note {
+      padding: 12px 18px;
+      background: #08080f;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .error-msg {
+      color: var(--red-bright);
+      font-size: 12px;
+      padding: 8px 18px 14px;
+    }
+
+    .disclaimer {
+      font-size: 11px;
+      color: var(--text-faint);
+      line-height: 1.6;
+      text-align: center;
+      padding: 8px;
+      margin-top: 4px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .result { animation: fadeUp 0.25s ease; }
+
+    /* Theme suggestions */
+    .theme-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 0 18px 14px;
+    }
+    .chip {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .chip-white { background: #0d2a1a; border-color: #166534; color: #4ade80; }
+    .chip-black { background: #2d0a0a; border-color: #7f1d1d; color: #f87171; }
+    .chip-neutral { background: #111827; border-color: #1f2937; color: #94a3b8; }
+    .chip:active { transform: scale(0.95); }
+  </style>
+</head>
+<body class="safe-area">
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-eyebrow">AI短线宝 · 策略生成器</div>
+    <h1 class="header-title">
+      输入参数<br>
+      <span>生成交易策略</span>
+    </h1>
+    <p class="header-sub">基于 252 条历史数据分析，策略仅供参考，请结合大盘环境判断。</p>
+  </div>
+
+  <!-- Input Card -->
+  <div class="card">
+    <div class="form-grid">
+      <div class="form-field">
+        <label>股票代码</label>
+        <input id="code" type="text" inputmode="numeric" placeholder="如 300750" maxlength="6" />
+      </div>
+      <div class="form-field">
+        <label>入选价格（元）</label>
+        <input id="price" type="number" inputmode="decimal" placeholder="如 45.20" step="0.01" />
+      </div>
+      <div class="form-field">
+        <label>AI 得分</label>
+        <input id="score" type="number" inputmode="decimal" placeholder="如 91.5" step="0.1" />
+      </div>
+      <div class="form-field">
+        <label>主题</label>
+        <input id="theme" type="text" placeholder="如 算力" />
+      </div>
+    </div>
+
+    <!-- Theme quick-select -->
+    <div style="padding: 0 18px 6px;">
+      <div style="font-family: var(--mono); font-size: 10px; color: var(--text-faint); letter-spacing: 0.1em; margin-bottom: 8px;">快速选择主题</div>
+    </div>
+    <div class="theme-chips">
+      <span class="chip chip-white" onclick="setTheme('算力')">✓ 算力</span>
+      <span class="chip chip-white" onclick="setTheme('半导体')">✓ 半导体</span>
+      <span class="chip chip-white" onclick="setTheme('有色')">✓ 有色</span>
+      <span class="chip chip-black" onclick="setTheme('机器人')">✗ 机器人</span>
+      <span class="chip chip-black" onclick="setTheme('军工')">✗ 军工</span>
+      <span class="chip chip-black" onclick="setTheme('商业航天')">✗ 商业航天</span>
+      <span class="chip chip-black" onclick="setTheme('电力')">✗ 电力</span>
+      <span class="chip chip-neutral" onclick="setTheme('锂电池')">锂电池</span>
+      <span class="chip chip-neutral" onclick="setTheme('医药')">医药</span>
+      <span class="chip chip-neutral" onclick="setTheme('新能源')">新能源</span>
+    </div>
+
+    <div id="error" class="error-msg" style="display:none">请填写全部四个字段</div>
+  </div>
+
+  <button class="btn-primary" onclick="generate()">生成策略</button>
+
+  <!-- Result -->
+  <div id="result" style="display:none" class="result"></div>
+
+  <p class="disclaimer">策略基于历史数据，不构成投资建议。<br>请结合实时大盘环境和板块趋势自行判断。</p>
+</div>
+
+<script>
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  function setTheme(t) {
+    document.getElementById('theme').value = t;
+    document.getElementById('result').style.display = 'none';
+  }
+
+  const WHITE = ['有色','半导体','算力'];
+  const BLACK = ['军工','商业航天','电力','机器人'];
+
+  function analyze(code, score, theme, price) {
+    const s = parseFloat(score);
+    const p = parseFloat(price);
+    let total = 0, details = [], strategy = null;
+
+    // Price check
+    if (p > 150) {
+      return {
+        verdict: '不可买入', type: 'reject',
+        reason: `股价 ${p} 元超过 150 元上限，1.5 万资金无法有效建仓。`,
+        details: [], strategy: null
+      };
+    }
+
+    // Market
+    const c = String(code).padStart(6,'0');
+    let market, mScore, mNote;
+    if (c.startsWith('688'))      { market='科创板'; mScore=0;  mNote='科创板样本较少，参考价值有限'; }
+    else if (c.startsWith('3'))   { market='创业板'; mScore=2;  mNote='创业板×91-92分历史胜率69%，均值+4.31%'; }
+    else if (c.startsWith('6'))   { market='沪主板'; mScore=0;  mNote='沪主板91-92分均值仅+0.91%，表现一般'; }
+    else if (c.startsWith('0'))   { market='深主板'; mScore=1;  mNote='深主板表现居中'; }
+    else                          { market='其他';   mScore=0;  mNote='无充足历史数据'; }
+    details.push({ label:'市场', value: market, note: mNote, score: mScore });
+    total += mScore;
+
+    // Score
+    let sLevel, sVal, sNote;
+    if (s >= 91 && s <= 92)      { sLevel='甜区 ✓'; sVal=5; sNote='91-92分：历史胜率100%，均值+5.75%（叠加优质主题）'; }
+    else if (s > 92 && s <= 95)  { sLevel='偏高';   sVal=1; sNote='93-95分：胜率42%，均值-0.66%，表现差于91-92分'; }
+    else if (s >= 90 && s < 91)  { sLevel='及格线'; sVal=0; sNote='90分整数档：信号质量低，胜率仅44%'; }
+    else if (s > 95)             { sLevel='极高';   sVal=1; sNote='>95分：样本太少（3条），暂无可信结论'; }
+    else                         { sLevel='不足';   sVal=-2; sNote='<90分：胜率38%，均值负值，建议跳过'; }
+    details.push({ label:'AI 得分', value:`${score}分（${sLevel}）`, note: sNote, score: sVal });
+    total += sVal;
+
+    // Theme
+    let tLevel, tVal, tNote;
+    if (WHITE.includes(theme))    { tLevel='白名单 ✓'; tVal=3;  tNote=`${theme}：核心优质主题，叠加91-92分历史胜率100%`; }
+    else if (BLACK.includes(theme)){ tLevel='黑名单 ✗'; tVal=-3; tNote=`${theme}：历史表现差，建议回避`; }
+    else                          { tLevel='中性';    tVal=0;  tNote=`${theme}：样本不足或表现中性`; }
+    details.push({ label:'主题', value:`${theme}（${tLevel}）`, note: tNote, score: tVal });
+    total += tVal;
+
+    // Verdict
+    const isCore = s >= 91 && s <= 92 && WHITE.includes(theme);
+    const isBlack = BLACK.includes(theme);
+
+    let verdict, type;
+    if (isCore) {
+      verdict='强烈推荐买入'; type='strong';
+      strategy = {
+        position:'1.5 万（满仓）',
+        hold:'持有至 T+3 收盘卖出',
+        tp:'挂单止盈 +15%（T+1~T+3 任意日触发即出）',
+        sl:'不设止损',
+        expect:'均值 +5.75%，历史胜率 100%（样本 10 条）',
+        note:'最高置信度组合，符合核心策略全部条件。'
+      };
+    } else if (isBlack) {
+      verdict='建议跳过'; type='reject';
+    } else if (total >= 5) {
+      verdict='推荐买入'; type='good';
+      strategy = {
+        position:'0.75～1.5 万（视信心决定）',
+        hold:'持有至 T+3 收盘卖出',
+        tp:'挂单止盈 +15%',
+        sl:'不设止损',
+        expect:'均值约 +2～4%，胜率约 65～75%',
+        note:'条件较好但非核心组合，适当减仓控制风险。'
+      };
+    } else if (total >= 2) {
+      verdict='谨慎观望'; type='caution';
+      strategy = {
+        position:'0.5 万以内（试探性）',
+        hold:'持有至 T+3 收盘卖出',
+        tp:'挂单止盈 +10%',
+        sl:'不设止损',
+        expect:'均值约 +1～2%，胜率约 55%',
+        note:'信号强度不足，仓位要小，不确定性较高。'
+      };
+    } else {
+      verdict='建议跳过'; type='reject';
+    }
+
+    return { verdict, type, reason: null, details, strategy, total };
+  }
+
+  const COLORS = {
+    strong: { bg:'#0d3b1e', border:'#22c55e', text:'#4ade80' },
+    good:   { bg:'#0f2e1a', border:'#16a34a', text:'#86efac' },
+    caution:{ bg:'#2d1f00', border:'#d97706', text:'#fbbf24' },
+    reject: { bg:'#2d0a0a', border:'#dc2626', text:'#f87171' },
+  };
+
+  function scoreColor(s) {
+    if (s > 0) return '#4ade80';
+    if (s < 0) return '#f87171';
+    return '#64748b';
+  }
+
+  function generate() {
+    const code  = document.getElementById('code').value.trim();
+    const price = document.getElementById('price').value.trim();
+    const score = document.getElementById('score').value.trim();
+    const theme = document.getElementById('theme').value.trim();
+    const err   = document.getElementById('error');
+    const res   = document.getElementById('result');
+
+    if (!code || !price || !score || !theme) {
+      err.style.display = 'block';
+      res.style.display = 'none';
+      return;
+    }
+    err.style.display = 'none';
+
+    const r = analyze(code, score, theme, price);
+    const c = COLORS[r.type];
+
+    // Capital calc
+    const p = parseFloat(price);
+    const lots  = Math.floor(15000 / p / 100) * 100;
+    const cost  = (lots * p).toFixed(0);
+
+    let html = `
+      <div class="verdict-card" style="background:${c.bg};border:1px solid ${c.border};">
+        <div class="verdict-dot" style="background:${c.border};box-shadow:0 0 8px ${c.border};"></div>
+        <div>
+          <div class="verdict-title" style="color:${c.text}">${r.verdict}</div>
+          ${r.reason
+            ? `<div class="verdict-sub">${r.reason}</div>`
+            : `<div class="verdict-sub">综合评分 ${r.total >= 0 ? '+' : ''}${r.total}</div>`}
+        </div>
+      </div>`;
+
+    if (r.details.length) {
+      html += `<div class="card">
+        <div class="card-header"><span class="card-label">因子分析</span></div>`;
+      r.details.forEach(d => {
+        html += `<div class="factor-row">
+          <div style="flex:1">
+            <div class="factor-label">${d.label}</div>
+            <div class="factor-value">${d.value}</div>
+            <div class="factor-note">${d.note}</div>
+          </div>
+          <div class="factor-score" style="color:${scoreColor(d.score)}">${d.score > 0 ? '+' : ''}${d.score}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (r.strategy) {
+      const rows = [
+        ['买入仓位', r.strategy.position],
+        ['持有时间', r.strategy.hold],
+        ['止盈设置', r.strategy.tp],
+        ['止损设置', r.strategy.sl],
+        ['历史期望', r.strategy.expect],
+      ];
+      html += `<div class="card">
+        <div class="card-header"><span class="card-label">交易策略</span></div>`;
+      rows.forEach(([k,v]) => {
+        html += `<div class="strat-row">
+          <div class="strat-key">${k}</div>
+          <div class="strat-val">${v}</div>
+        </div>`;
+      });
+      html += `<div class="strat-note">💡 ${r.strategy.note}</div></div>`;
+    }
+
+    if (r.type !== 'reject' && lots > 0) {
+      html += `<div class="card">
+        <div class="card-header"><span class="card-label">资金测算</span></div>
+        <div class="cap-grid">
+          <div><div class="cap-label">股价</div><div class="cap-value">${p.toFixed(2)}元</div></div>
+          <div><div class="cap-label">可买数量</div><div class="cap-value">${lots}股</div></div>
+          <div><div class="cap-label">实际资金</div><div class="cap-value">${cost}元</div></div>
+        </div>
+      </div>`;
+    }
+
+    res.innerHTML = html;
+    res.style.display = 'block';
+    res.style.animation = 'none';
+    res.offsetHeight;
+    res.style.animation = 'fadeUp 0.25s ease';
+
+    // Scroll to result
+    setTimeout(() => res.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }
+
+  // Enter key support
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') generate();
+  });
+</script>
+</body>
+</html>
